@@ -3,6 +3,7 @@ import os
 import pickle
 
 from CommonClient import ClientCommandProcessor
+from .strings import CLIENT_PREFIX, CONNECT_ADMIN, WEBSITE_PREFIX
 from .context import SLContext
 
 
@@ -56,10 +57,16 @@ class SLClientCommandProcessor(ClientCommandProcessor):
             self.icon.stop()
         self.ctx.ui.show()
 
-    def get_status_lock_lines(self) -> list[str]:
+    def get_status_lock_lines(self, client: bool = False) -> list[str]:
         """Get the lines you'd need to paste into the server"""
-        # TODO: implement this
-        return []
+        l: list[str] = []
+        if client:
+            prefix = CLIENT_PREFIX
+            l.append(prefix + CONNECT_ADMIN.format(password=self.ctx.admin_password))
+        else:
+            prefix = WEBSITE_PREFIX
+        # TODO: add release/collect/hint lines when they change
+        return l
 
     def _cmd_copy_lines(self) -> None:
         """Copy the lines you'd need to paste into the clipboard"""
