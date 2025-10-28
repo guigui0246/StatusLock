@@ -5,6 +5,8 @@ import sys
 import asyncio
 import shutil
 from typing import Any
+
+from kivy.core.window import Window
 from NetUtils import Endpoint
 import Utils
 
@@ -16,7 +18,7 @@ from .commands import SLClientCommandProcessor
 class SLContext(CommonContext):
     command_processor = SLClientCommandProcessor
     game = "Status Lock"
-    items_handling = 0b111  # full remote
+    items_handling = 0b111  # full remote apparently
     want_slot_data = True
 
     def __init__(self, server_address: str, password: str):
@@ -129,12 +131,10 @@ class SLContext(CommonContext):
             base_title = "Archipelago Status Lock Client"
 
             def hide(self) -> None:
-                # TODO: withdraw window
-                pass
+                Window.hide()  # type: ignore
 
             def show(self) -> None:
-                # TODO: show window
-                pass
+                Window.show()  # type: ignore
 
         self.ui: SLManager = SLManager(self)  # type: ignore[reportIncompatibleVariableOverride]
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")

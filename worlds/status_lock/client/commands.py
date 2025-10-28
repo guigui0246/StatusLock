@@ -18,7 +18,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Show Slot Data, For Debug Purposes. Probably don't run this"""
         self.output(f"Data: {str(self.ctx.slot_data)}")
 
-    def _cmd_set_password(self, key: str = "") -> None:
+    def _cmd_set_password(self, key: str | None = None) -> None:
         """Sets the admin password"""
         self.ctx.admin_password = key
         self.output("Correctly set password")
@@ -56,12 +56,16 @@ class SLClientCommandProcessor(ClientCommandProcessor):
             self.icon.stop()
         self.ctx.ui.show()
 
+    def get_status_lock_lines(self) -> list[str]:
+        """Get the lines you'd need to paste into the server"""
+        # TODO: implement this
+        return []
+
     def _cmd_copy_lines(self) -> None:
         """Copy the lines you'd need to paste into the clipboard"""
-        # TODO: make the clipboard
-        # import clipboard
-        # s = "TODO: complete this"
-        # clipboard.copy(s)
+        import clipboard
+        s = "\n".join(self.get_status_lock_lines())
+        clipboard.copy(s)
         pass
 
 
