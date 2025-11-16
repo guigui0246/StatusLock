@@ -225,8 +225,6 @@ class CrystalAmount(Range):
 class MacGuffinAmount(Range):
     """
     The amount of MacGuffins to collect to goal if the macguffin goal is active.
-    This still adds macguffins to the item pool even if the goal is not active.
-    TODO: change that behavior to only add them if the goal is active.
     """
 
     display_name = "MacGuffin Amount"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from BaseClasses import Item, ItemClassification
+from worlds.status_lock.options import GoalType
 
 if TYPE_CHECKING:
     from .world import SLWorld
@@ -76,7 +77,7 @@ class SLItem(Item):
 def get_filler_item_name(world: SLWorld) -> str:
     if world.random.randint(0, 99) < world.options.trap_chance:
         return world.random.choice(ALL_TRAPS)
-    return world.random.choice(ALL_FILLERS + ([MACGUFFIN_FILLER_ITEM_NAME] if world.options.macguffin_amount > 0 else []))
+    return world.random.choice(ALL_FILLERS)
 
 
 def create_item(world: SLWorld, name: str) -> SLItem:
@@ -91,11 +92,53 @@ def create_item(world: SLWorld, name: str) -> SLItem:
 def create_all_items(world: SLWorld) -> None:
     itempool: list[Item] = []
 
-    # TODO: complete itempool based on options
     has_release_shards = world.options.release_shards_amount > 0
-
     if has_release_shards:
         itempool.extend([world.create_item("Release Shard")] * world.options.release_shards_amount)
+
+    has_auto_release_shards = world.options.auto_release_shards_amount > 0
+    if has_auto_release_shards:
+        itempool.extend([world.create_item("Auto-Release Shard")] * world.options.auto_release_shards_amount)
+
+    has_collect_shards = world.options.collect_shards_amount > 0
+    if has_collect_shards:
+        itempool.extend([world.create_item("Collect Shard")] * world.options.collect_shards_amount)
+
+    has_auto_collect_shards = world.options.auto_collect_shards_amount > 0
+    if has_auto_collect_shards:
+        itempool.extend([world.create_item("Auto-Collect Shard")] * world.options.auto_collect_shards_amount)
+
+    has_macguffins = (
+        world.options.macguffin_amount > 0
+        and world.options.goal_choice & GoalType.macguffin_collection
+    )
+    if has_macguffins:
+        itempool.extend([world.create_item("MacGuffin")] * world.options.macguffin_amount)
+
+    has_hint_crystals = (
+        world.options.crystal_amount > 0
+        and world.options.max_hint_cost > world.options.min_hint_cost
+    )
+    if has_hint_crystals:
+        amount = world.options.crystal_amount
+        crystal_types: dict[int, str] = {
+            0: "Mini Hint Crystal",
+            1: "Small Hint Crystal",
+            5: "Medium Hint Crystal",
+            20: "Big Hint Crystal",
+            80: "Giant Hint Crystal",
+        }
+        decomp: dict[int, int] = {1: 0, 5: 1, 20: 5, 80: 20}
+        crystals_values: list[int] = [80] if amount % 2 else [20, 80]
+        amount -= 2
+        while amount > 0 and any(crystals_values):  # any will return false if we only have 0 in the list
+            value = world.random.choice(crystals_values)
+            if value in decomp:
+                crystals_values.remove(value)
+                crystals_values.extend([decomp[value]] * 3)
+                amount -= 2
+        crystals_values.extend([0] * amount)  # Fill the rest with mini crystals
+        itempool.extend([world.create_item(crystal_types[v]) for v in crystals_values])
 
     number_of_items = len(itempool)
     number_of_unfilled_locations = len(world.multiworld.get_unfilled_locations(world.player))

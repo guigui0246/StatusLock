@@ -55,6 +55,8 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Go back from a tray icon to the client"""
         if self.icon is not None:
             self.icon.stop()
+            del self.icon
+            self.icon = None
         self.ctx.ui.show()
 
     def get_status_lock_lines(self, client: bool = False) -> list[str]:
