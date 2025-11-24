@@ -16,7 +16,7 @@ class MultipleGoals(Toggle):
     default = False
 
 
-class GoalType(Flag):
+class GoalType(int, Flag):
     """
     The type of goal to reach.
     """

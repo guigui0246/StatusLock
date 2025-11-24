@@ -7,6 +7,8 @@ from .locations import LOCATION_NAME_PREFIX
 
 if TYPE_CHECKING:
     from .world import SLWorld
+else:
+    type SLWorld = object
 
 
 def set_all_rules(world: SLWorld) -> None:

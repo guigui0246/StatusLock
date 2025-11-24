@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from BaseClasses import Location
+import Options
 
 from . import items
 
@@ -38,8 +39,9 @@ def create_regular_locations(world: SLWorld) -> None:
     region.add_locations(
         locations
     )
-    set_pointer = world.multiworld.exclude_locations[world.player]
-    set_pointer.value.add(*locations.keys())
+    set_pointer = (world.multiworld.exclude_locations[world.player]
+                   if hasattr(world.multiworld, 'exclude_locations') else Options.ExcludeLocations({}))
+    set_pointer.value.update(*locations.keys())
 
 
 def create_events(world: SLWorld) -> None:

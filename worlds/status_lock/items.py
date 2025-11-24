@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from BaseClasses import Item, ItemClassification
 from worlds.status_lock.options import GoalType
@@ -110,10 +110,10 @@ def create_all_items(world: SLWorld) -> None:
 
     has_macguffins = (
         world.options.macguffin_amount > 0
-        and world.options.goal_choice & GoalType.macguffin_collection
+        and bool(cast(GoalType, world.options.goal_choice.value) & GoalType.macguffin_collection)
     )
     if has_macguffins:
-        itempool.extend([world.create_item("MacGuffin")] * world.options.macguffin_amount)
+        itempool.extend([world.create_item(MACGUFFIN_ITEM_NAME)] * world.options.macguffin_amount)
 
     has_hint_crystals = (
         world.options.crystal_amount > 0
