@@ -1,5 +1,5 @@
 from __future__ import annotations
-from cryptography.fernet import Fernet
+from .cryptography.fernet import Fernet
 import os
 import sys
 import asyncio
@@ -20,6 +20,7 @@ class SLContext(CommonContext):
     game = "Status Lock"
     items_handling = 0b111  # full remote apparently
     want_slot_data = True
+    slot_data: dict[str, Any] | None = None
 
     def __init__(self, server_address: str, password: str):
         super(SLContext, self).__init__(server_address, password)
@@ -138,12 +139,6 @@ class SLContext(CommonContext):
 
         self.ui: SLManager = SLManager(self)  # type: ignore[reportIncompatibleVariableOverride]
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
-
-    @property
-    def slot_data(self) -> Data | None:
-        if self.auth is None:
-            return None
-        return self.all_data[self.auth, tuple(self.player_names.values())].read_only()
 
 
 __all__ = ["SLContext"]

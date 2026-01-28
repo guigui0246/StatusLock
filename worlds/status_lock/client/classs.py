@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from cryptography.fernet import Fernet
+from .cryptography.fernet import Fernet
 
 
 class SecurityLevel(Enum):

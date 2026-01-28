@@ -20,6 +20,8 @@ class SLWorld(World):
 
     origin_region_name = "Admin Panel"
 
+    required_client_version = (0, 1, 0)
+
     def create_regions(self) -> None:
         regions.create_and_connect_regions(self)
         locations.create_all_locations(self)

@@ -15,7 +15,7 @@ if __name__ == "__main__":
     Utils.init_logging("StatusLockClient", exception_logger="Client")
 
 
-def main():
+def main(*args: str) -> None:
     async def _main(args: Utils.Namespace):
         ctx = SLContext(args.connect, args.password)
         ctx.server_task = asyncio.create_task(server_loop(ctx), name="server loop")
@@ -32,9 +32,8 @@ def main():
 
     parser = get_base_parser(description="SL! Client, for text interfacing.")
 
-    args, _ = parser.parse_known_args()
     colorama.init()
-    asyncio.run(_main(args))
+    asyncio.run(_main(parser.parse_args(args)))
     colorama.deinit()
 
 

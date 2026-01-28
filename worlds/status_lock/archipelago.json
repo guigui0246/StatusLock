@@ -1,6 +1,6 @@
 {
-	"game": "Status Lock",
-	"minimum_ap_version": "0.6.3",
-	"world_version": "0.0.1",
-	"authors": ["Guigui0246"]
+  "game": "Status Lock",
+  "authors": ["Guigui0246", "Elire, Astra, Vei (idea)"],
+  "minimum_ap_version": "0.6.4",
+  "world_version": "0.1.0"
 }
