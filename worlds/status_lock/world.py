@@ -39,6 +39,8 @@ class SLWorld(World):
         return items.get_filler_item_name(self)
 
     def fill_slot_data(self) -> Mapping[str, Any]:
-        return self.options.as_dict(
+        option_dict = self.options.as_dict(
             *options.ALL_OPTIONS
         )
+        option_dict |= items.fill_slot_data(self)
+        return option_dict

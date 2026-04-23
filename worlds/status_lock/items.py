@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 from BaseClasses import Item, ItemClassification
+from worlds.status_lock.client.classs import OnlineData
 from worlds.status_lock.options import GoalType
 
 if TYPE_CHECKING:
@@ -89,46 +90,90 @@ def create_item(world: SLWorld, name: str) -> SLItem:
     return SLItem(name, classification, ITEM_NAME_TO_ID[name], world.player)
 
 
-def create_all_items(world: SLWorld) -> None:
-    itempool: list[Item] = []
-    slot_data = getattr(world.multiworld, "slot_data", None)
-    if slot_data is None:
-        world.multiworld.slot_data: dict[int, Any] = {}  # type: ignore
-    world.multiworld.slot_data.setdefault(world.player, {})  # type: ignore
+def has_release_shards(world: SLWorld) -> bool:
+    return world.options.release_shards_amount > 0
 
-    has_release_shards = world.options.release_shards_amount > 0
-    if has_release_shards:
-        itempool.extend([world.create_item("Release Shard")] * world.options.release_shards_amount)
-        world.multiworld.slot_data[world.player]["has_release_shards"] = True  # type: ignore
 
-    has_auto_release_shards = world.options.auto_release_shards_amount > 0
-    if has_auto_release_shards:
-        itempool.extend([world.create_item("Auto-Release Shard")] * world.options.auto_release_shards_amount)
-        world.multiworld.slot_data[world.player]["has_auto_release_shards"] = True  # type: ignore
+def has_auto_release_shards(world: SLWorld) -> bool:
+    return world.options.auto_release_shards_amount > 0
 
-    has_collect_shards = world.options.collect_shards_amount > 0
-    if has_collect_shards:
-        itempool.extend([world.create_item("Collect Shard")] * world.options.collect_shards_amount)
-        world.multiworld.slot_data[world.player]["has_collect_shards"] = True  # type: ignore
 
-    has_auto_collect_shards = world.options.auto_collect_shards_amount > 0
-    if has_auto_collect_shards:
-        itempool.extend([world.create_item("Auto-Collect Shard")] * world.options.auto_collect_shards_amount)
-        world.multiworld.slot_data[world.player]["has_auto_collect_shards"] = True  # type: ignore
+def has_collect_shards(world: SLWorld) -> bool:
+    return world.options.collect_shards_amount > 0
 
-    has_macguffins = (
+
+def has_auto_collect_shards(world: SLWorld) -> bool:
+    return world.options.auto_collect_shards_amount > 0
+
+
+def has_macguffins(world: SLWorld) -> bool:
+    return (
         world.options.macguffin_amount > 0
         and bool(cast(GoalType, world.options.goal_choice.value) & GoalType.macguffin_collection)
     )
-    if has_macguffins:
-        itempool.extend([world.create_item(MACGUFFIN_ITEM_NAME)] * world.options.macguffin_amount)
-        world.multiworld.slot_data[world.player]["has_macguffins"] = True  # type: ignore
 
-    has_hint_crystals = (
+
+def has_hint_crystals(world: SLWorld) -> bool:
+    return (
         world.options.crystal_amount > 0
         and world.options.max_hint_cost > world.options.min_hint_cost
     )
-    if has_hint_crystals:
+
+
+def fill_slot_data(world: SLWorld) -> OnlineData:
+    slot_data: OnlineData = {
+        "has_release_shards": False,
+        "has_auto_release_shards": False,
+        "has_collect_shards": False,
+        "has_auto_collect_shards": False,
+        "has_macguffins": False,
+        "has_hint_crystals": False,
+        "max_hint_cost": 0,
+        "min_hint_cost": 0
+    }
+
+    if has_release_shards(world):
+        slot_data["has_release_shards"] = True
+
+    if has_auto_release_shards(world):
+        slot_data["has_auto_release_shards"] = True
+
+    if has_collect_shards(world):
+        slot_data["has_collect_shards"] = True
+
+    if has_auto_collect_shards(world):
+        slot_data["has_auto_collect_shards"] = True
+
+    if has_macguffins(world):
+        slot_data["has_macguffins"] = True
+
+    if has_hint_crystals(world):
+        slot_data["has_hint_crystals"] = True
+        slot_data["max_hint_cost"] = int(world.options.max_hint_cost)
+        slot_data["min_hint_cost"] = int(world.options.min_hint_cost)
+
+    return slot_data
+
+
+def create_all_items(world: SLWorld) -> None:
+    itempool: list[Item] = []
+
+    if has_release_shards(world):
+        itempool.extend([world.create_item("Release Shard")] * world.options.release_shards_amount)
+
+    if has_auto_release_shards(world):
+        itempool.extend([world.create_item("Auto-Release Shard")] * world.options.auto_release_shards_amount)
+
+    if has_collect_shards(world):
+        itempool.extend([world.create_item("Collect Shard")] * world.options.collect_shards_amount)
+
+    if has_auto_collect_shards(world):
+        itempool.extend([world.create_item("Auto-Collect Shard")] * world.options.auto_collect_shards_amount)
+
+    if has_macguffins(world):
+        itempool.extend([world.create_item(MACGUFFIN_ITEM_NAME)] * world.options.macguffin_amount)
+
+    if has_hint_crystals(world):
         amount = world.options.crystal_amount
         crystal_types: dict[int, str] = {
             0: "Mini Hint Crystal",
@@ -148,9 +193,6 @@ def create_all_items(world: SLWorld) -> None:
                 amount -= 2
         crystals_values.extend([0] * amount)  # Fill the rest with mini crystals
         itempool.extend([world.create_item(crystal_types[v]) for v in crystals_values])
-        world.multiworld.slot_data[world.player]["has_hint_crystals"] = True  # type: ignore
-        world.multiworld.slot_data[world.player]["max_hint_cost"] = world.options.max_hint_cost  # type: ignore
-        world.multiworld.slot_data[world.player]["min_hint_cost"] = world.options.min_hint_cost  # type: ignore
 
     number_of_items = len(itempool)
     number_of_unfilled_locations = len(world.multiworld.get_unfilled_locations(world.player))

@@ -3,15 +3,13 @@ from .cryptography.fernet import Fernet
 import os
 import sys
 import asyncio
-import shutil
 from typing import Any
 
 from kivy.core.window import Window
 from NetUtils import Endpoint
-import Utils
 
-from CommonClient import logger, CommonContext
-from .classs import Data, DataClass
+from CommonClient import CommonContext
+from .classs import Data, DataClass, OnlineData
 from .commands import SLClientCommandProcessor
 
 
@@ -20,54 +18,31 @@ class SLContext(CommonContext):
     game = "Status Lock"
     items_handling = 0b111  # full remote apparently
     want_slot_data = True
-    slot_data: dict[str, Any] | None = None
+    slot_data: OnlineData | None = None
 
     def __init__(self, server_address: str, password: str):
-        super(SLContext, self).__init__(server_address, password)
+        super().__init__(server_address, password)
         self.send_index: int = 0
         self.all_data = DataClass()
 
-        #############################################
-        #  This is extracted from the osu apworld:  #
-        # The only changed thing is the last folder #
-        #############################################
         SL_FOLDER = ".StatusLockArchipelago"
 
-        # self.game_communication_path: files go in this path to pass data between us and the actual game
         if "localappdata" in os.environ:
-            self.game_communication_path = os.path.expandvars(fr"%localappdata%/{SL_FOLDER}")
+            self.save_path = os.path.expandvars(fr"%localappdata%/{SL_FOLDER}")
         else:
-            # not windows. game is an exe so let's see if wine might be around to run it
-            if "WINEPREFIX" in os.environ:
-                wineprefix = os.environ["WINEPREFIX"]
-            elif shutil.which("wine") or shutil.which("wine-stable"):
-                wineprefix = os.path.expanduser(
-                    "~/.wine")  # default root of wine system data, deep in which is app data
-            else:
-                msg = "SLClient couldn't detect system type. Unable to infer required game_communication_path"
-                logger.error("Error: " + msg)
-                Utils.messagebox("Error", msg, error=True)
-                sys.exit(1)
-            self.game_communication_path = os.path.join(
-                wineprefix,
-                "drive_c",
-                os.path.expandvars(f"users/$USER/Local Settings/Application Data/{SL_FOLDER}"))
+            self.save_path = os.path.expanduser(f"~/{SL_FOLDER}")
 
-        #############################################
-        #  This was extracted from the osu apworld  #
-        #############################################
-
-        if not self.game_communication_path:
+        if not self.save_path:
             sys.exit("Could not determine game communication path.")
 
-        if not os.path.exists(self.game_communication_path):
-            os.makedirs(self.game_communication_path)
-        if not os.path.exists(os.path.join(self.game_communication_path, "key")):
-            with open(os.path.join(self.game_communication_path, "key"), "wb") as f:
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+        if not os.path.exists(os.path.join(self.save_path, "key")):
+            with open(os.path.join(self.save_path, "key"), "wb") as f:
                 key = Fernet.generate_key()
                 f.write(key)
         else:
-            with open(os.path.join(self.game_communication_path, "key"), "rb") as f:
+            with open(os.path.join(self.save_path, "key"), "rb") as f:
                 key = f.read()
 
         Data.admin_encryption_key = key
@@ -86,16 +61,12 @@ class SLContext(CommonContext):
 
     async def server_auth(self, password_requested: bool = False):
         if password_requested and not self.password:
-            await super(SLContext, self).server_auth(password_requested)
+            await super().server_auth(password_requested)
         await self.get_username()
         await self.send_connect()
 
     async def connection_closed(self):
-        await super(SLContext, self).connection_closed()
-        for root, _, files in os.walk(self.game_communication_path):
-            for file in files:
-                if file.find("obtain") <= -1:
-                    os.remove(root + "/" + file)
+        await super().connection_closed()
 
     @property
     def endpoints(self) -> list[Endpoint]:
@@ -105,21 +76,16 @@ class SLContext(CommonContext):
             return []
 
     async def shutdown(self):
-        await super(SLContext, self).shutdown()
-        for root, _, files in os.walk(self.game_communication_path):
-            for file in files:
-                if file.find("obtain") <= -1:
-                    os.remove(root + "/" + file)
+        await super().shutdown()
 
     def on_package(self, cmd: str, args: dict[str, Any]) -> None:
         if cmd in {"Connected"}:
             print(args)
             slot_data = args.get('slot_data', None)
             if slot_data:
-                # TODO: process slot data
-                pass
-            if not os.path.exists(self.game_communication_path):
-                os.makedirs(self.game_communication_path)
+                self.slot_data = OnlineData(slot_data)
+            if not os.path.exists(self.save_path):
+                os.makedirs(self.save_path)
 
     def run_gui(self):
         """Import kivy UI system and start running it as self.ui_task."""

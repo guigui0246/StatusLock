@@ -49,7 +49,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
     def __init__(self, ctx: SLContext):
         super().__init__(ctx)
         self.ctx = ctx
-        self.config_folder = os.path.join(self.ctx.game_communication_path, 'config')
+        self.config_folder = os.path.join(self.ctx.save_path, 'config')
         self.config_file = os.path.join(self.config_folder, 'config')
         self.icon = None
 
@@ -79,15 +79,19 @@ class SLClientCommandProcessor(ClientCommandProcessor):
 
     def _cmd_tray(self) -> None:
         """Sends the client to a tray icon"""
-        import pystray
-        items: list[pystray.MenuItem] = [
-            pystray.MenuItem("Open client", self.untray),
-            pystray.MenuItem("Copy lines to paste", self._cmd_copy_lines),
-        ]
-        menu = pystray.Menu(items)
-        self.icon = pystray.Icon("Status Lock", None, None, menu)
-        self.icon.run_detached()
-        self.ctx.ui.hide()
+        try:
+            from . import pystray
+            items: list[pystray.MenuItem] = [
+                pystray.MenuItem("Open client", self.untray),
+                pystray.MenuItem("Copy lines to paste", self._cmd_copy_lines),
+            ]
+            menu = pystray.Menu(items)
+            self.icon = pystray.Icon("Status Lock", None, None, menu)
+            self.icon.run_detached()
+            self.ctx.ui.hide()
+        except (ImportError, OSError) as e:
+            self.output(f"pystray is not available: {repr(e)}")
+            return
 
     def untray(self) -> None:
         """Go back from a tray icon to the client"""
