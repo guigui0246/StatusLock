@@ -1,8 +1,10 @@
 from __future__ import annotations
 import os
+from pathlib import Path
 import platform
 import subprocess
 import pickle
+import sys
 from typing import TYPE_CHECKING
 
 from CommonClient import ClientCommandProcessor
@@ -79,14 +81,31 @@ class SLClientCommandProcessor(ClientCommandProcessor):
 
     def _cmd_tray(self) -> None:
         """Sends the client to a tray icon"""
+        if self.icon is not None:
+            self.untray()
+        if self.ctx.slot_data is None:
+            self.output("No slot data available, please connect to a server first")
+            return
         try:
-            from . import pystray
+            import pystray  # pyright: ignore[reportMissingModuleSource]
+            del pystray
+        except ImportError:
+            sys.path.append(str(Path(__file__).parent.parent / "deps"))
+
+        try:
+            from .pillow_fix import Image
+            import pystray  # pyright: ignore[reportMissingModuleSource]
             items: list[pystray.MenuItem] = [
-                pystray.MenuItem("Open client", self.untray),
+                pystray.MenuItem("Open client", self.untray, default=True),
                 pystray.MenuItem("Copy lines to paste", self._cmd_copy_lines),
             ]
-            menu = pystray.Menu(items)
-            self.icon = pystray.Icon("Status Lock", None, None, menu)
+            menu = pystray.Menu(*items)
+            self.icon = pystray.Icon(
+                "Status Lock",
+                Image("./data/icon.ico"),
+                "Status Lock",
+                menu
+            )
             self.icon.run_detached()
             self.ctx.ui.hide()
         except (ImportError, OSError) as e:
