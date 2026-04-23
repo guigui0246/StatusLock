@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from worlds.status_lock.items import OnlineData
 from .cryptography.fernet import Fernet
 import os
 import sys
@@ -9,7 +11,7 @@ from kivy.core.window import Window
 from NetUtils import Endpoint
 
 from CommonClient import CommonContext
-from .classs import Data, DataClass, OnlineData
+from .classs import Data, DataClass
 from .commands import SLClientCommandProcessor
 
 

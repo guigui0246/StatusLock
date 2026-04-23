@@ -1,5 +1,4 @@
 from enum import Enum, auto
-from typing import TypedDict
 from .cryptography.fernet import Fernet
 
 
@@ -78,17 +77,6 @@ class DataClass:
 
     def __getitem__(self, key: tuple[str, tuple[str, ...]]) -> Data:
         return self.data.setdefault(key, Data())
-
-
-class OnlineData(TypedDict):
-    has_release_shards: bool
-    has_auto_release_shards: bool
-    has_collect_shards: bool
-    has_auto_collect_shards: bool
-    has_macguffins: bool
-    has_hint_crystals: bool
-    max_hint_cost: int
-    min_hint_cost: int
 
 
 __all__ = ["Data", "DataClass"]

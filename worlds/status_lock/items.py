@@ -1,13 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from BaseClasses import Item, ItemClassification
-from worlds.status_lock.client.classs import OnlineData
 from worlds.status_lock.options import GoalType
 
 if TYPE_CHECKING:
     from .world import SLWorld
+
+
+class OnlineData(TypedDict):
+    has_release_shards: bool
+    has_auto_release_shards: bool
+    has_collect_shards: bool
+    has_auto_collect_shards: bool
+    has_macguffins: bool
+    has_hint_crystals: bool
+    max_hint_cost: int
+    min_hint_cost: int
 
 
 MACGUFFIN_ITEM_NAME = "Macguffin"
