@@ -8,7 +8,11 @@ import sys
 from typing import TYPE_CHECKING
 
 from CommonClient import ClientCommandProcessor
-from .strings import CLIENT_PREFIX, CONNECT_ADMIN, HINT_COST, WEBSITE_PREFIX
+from .strings import (
+    CLIENT_PREFIX, CONNECT_ADMIN,
+    HINT_COST, RELEASE, COLLECT,
+    WEBSITE_PREFIX, ModeType
+)
 
 if TYPE_CHECKING:
     from .context import SLContext
@@ -170,15 +174,61 @@ class SLClientCommandProcessor(ClientCommandProcessor):
             for name in combined:
                 wanted_hint_cost += crystal_types[name]
 
-            wanted_hint_cost = min(wanted_hint_cost, 100)
+            wanted_hint_cost = 100 - max(wanted_hint_cost, 100)
             _range: int = self.ctx.slot_data["max_hint_cost"] - self.ctx.slot_data["min_hint_cost"]
-            wanted_hint_cost *= _range // 100
+            wanted_hint_cost *= _range
             wanted_hint_cost += self.ctx.slot_data["min_hint_cost"]
+            wanted_hint_cost //= 100
             wanted_hint_cost = min(wanted_hint_cost, self.ctx.slot_data["max_hint_cost"])
             if hint_cost != wanted_hint_cost:
                 l.append(prefix + HINT_COST.format(cost=wanted_hint_cost))
                 changed = True
-        # TODO: add release/collect/auto release/auto collect lines when they change
+
+        items = [self.ctx.item_names.lookup_in_game(i.item) for i in self.ctx.items_received]
+        wanted_release_mode: ModeType | None = None
+
+        has_release_shards = self.ctx.slot_data["has_release_shards"]
+        if has_release_shards:
+            shards = len(list(filter(lambda x: x == "Release Shard", items)))
+            needed = self.ctx.slot_data["release_shards_needed_amount"]
+            if shards >= needed:
+                wanted_release_mode = ModeType.enabled
+            else:
+                wanted_release_mode = ModeType.disabled
+
+        has_auto_release_shards = self.ctx.slot_data["has_auto_release_shards"]
+        if has_auto_release_shards and wanted_release_mode != ModeType.disabled:
+            shards = len(list(filter(lambda x: x == "Auto-Release Shard", items)))
+            needed = self.ctx.slot_data["auto_release_shards_needed_amount"]
+            if shards >= needed:
+                wanted_release_mode = ModeType.auto
+
+        if wanted_release_mode is not None and self.ctx.permissions["release"] != wanted_release_mode:
+            l.append(prefix + RELEASE.format(mode=wanted_release_mode))
+            changed = True
+
+        wanted_collect_mode: ModeType | None = None
+
+        has_collect_shards = self.ctx.slot_data["has_collect_shards"]
+        if has_collect_shards:
+            shards = len(list(filter(lambda x: x == "Collect Shard", items)))
+            needed = self.ctx.slot_data["collect_shards_needed_amount"]
+            if shards >= needed:
+                wanted_collect_mode = ModeType.enabled
+            else:
+                wanted_collect_mode = ModeType.disabled
+
+        has_auto_collect_shards = self.ctx.slot_data["has_auto_collect_shards"]
+        if has_auto_collect_shards and wanted_collect_mode != ModeType.disabled:
+            shards = len(list(filter(lambda x: x == "Auto-Collect Shard", items)))
+            needed = self.ctx.slot_data["auto_collect_shards_needed_amount"]
+            if shards >= needed:
+                wanted_collect_mode = ModeType.auto
+
+        if wanted_collect_mode is not None and self.ctx.permissions["collect"] != wanted_collect_mode:
+            l.append(prefix + COLLECT.format(mode=wanted_collect_mode))
+            changed = True
+
         if not changed:
             return []
         return l

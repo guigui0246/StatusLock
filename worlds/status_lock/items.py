@@ -11,10 +11,15 @@ if TYPE_CHECKING:
 
 class OnlineData(TypedDict):
     has_release_shards: bool
+    release_shards_needed_amount: int
     has_auto_release_shards: bool
+    auto_release_shards_needed_amount: int
     has_collect_shards: bool
+    collect_shards_needed_amount: int
     has_auto_collect_shards: bool
+    auto_collect_shards_needed_amount: int
     has_macguffins: bool
+    needed_macguffins_amount: int
     has_hint_crystals: bool
     max_hint_cost: int
     min_hint_cost: int
@@ -133,29 +138,51 @@ def has_hint_crystals(world: SLWorld) -> bool:
 def fill_slot_data(world: SLWorld) -> OnlineData:
     slot_data: OnlineData = {
         "has_release_shards": False,
+        "release_shards_needed_amount": 0,
         "has_auto_release_shards": False,
+        "auto_release_shards_needed_amount": 0,
         "has_collect_shards": False,
+        "collect_shards_needed_amount": 0,
         "has_auto_collect_shards": False,
+        "auto_collect_shards_needed_amount": 0,
         "has_macguffins": False,
+        "needed_macguffins_amount": 0,
         "has_hint_crystals": False,
         "max_hint_cost": 0,
-        "min_hint_cost": 0
+        "min_hint_cost": 0,
     }
 
     if has_release_shards(world):
         slot_data["has_release_shards"] = True
+        slot_data["release_shards_needed_amount"] = (
+            world.options.release_shards_amount.value
+            * world.options.release_shards_percent.value
+        ) // 100
 
     if has_auto_release_shards(world):
         slot_data["has_auto_release_shards"] = True
+        slot_data["auto_release_shards_needed_amount"] = (
+            world.options.auto_release_shards_amount.value
+            * world.options.auto_release_shards_percent.value
+        ) // 100
 
     if has_collect_shards(world):
         slot_data["has_collect_shards"] = True
+        slot_data["collect_shards_needed_amount"] = (
+            world.options.collect_shards_amount.value
+            * world.options.collect_shards_percent.value
+        ) // 100
 
     if has_auto_collect_shards(world):
         slot_data["has_auto_collect_shards"] = True
+        slot_data["auto_collect_shards_needed_amount"] = (
+            world.options.auto_collect_shards_amount.value
+            * world.options.auto_collect_shards_percent.value
+        ) // 100
 
     if has_macguffins(world):
         slot_data["has_macguffins"] = True
+        slot_data["needed_macguffins_amount"] = world.options.macguffin_amount.value
 
     if has_hint_crystals(world):
         slot_data["has_hint_crystals"] = True

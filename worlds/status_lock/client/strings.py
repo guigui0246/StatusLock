@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Literal
 
 
@@ -14,3 +15,9 @@ COLLECT_PLAYER = "/collect {player_name}"  # To auto-collect if someone isn't co
 # In case we add free hints:
 HINT = "/hint {player_name} {item_name}"  # To request a hint for a specific item
 HINT_LOCATION = "/hint_location {player_name} {location_name}"  # To request a hint for a specific location
+
+
+class ModeType(StrEnum):
+    enabled = "enabled"
+    disabled = "disabled"
+    auto = "auto"
