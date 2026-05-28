@@ -141,16 +141,38 @@ class SLClientCommandProcessor(ClientCommandProcessor):
                 "Big Hint Crystal": 20,
                 "Giant Hint Crystal": 80,
             }
+            crystal_types_order: list[str] = [
+                "Mini Hint Crystal",
+                "Small Hint Crystal",
+                "Medium Hint Crystal",
+                "Big Hint Crystal",
+                "Giant Hint Crystal"
+            ]
             wanted_hint_cost: int = 0
 
-            for i in self.ctx.items_received:
-                name = self.ctx.item_names.lookup_in_game(i.item)
-                if name in crystal_types:
-                    wanted_hint_cost += crystal_types[name]
+            combined = [self.ctx.item_names.lookup_in_game(i.item) for i in self.ctx.items_received]
+            combined = list(filter(lambda x: x in crystal_types, combined))
+
+            for i, name in enumerate(crystal_types_order):
+                if i >= len(crystal_types_order) - 1:
+                    break
+                if name not in combined:
+                    continue
+                amount = len(list(filter(lambda x: x == name, combined)))
+                if amount < 3:
+                    continue
+                combine, left = divmod(amount, 3)
+                for _ in range(amount):
+                    combined.remove(name)
+                combined += [name] * left
+                combined += [crystal_types_order[i + 1]] * combine
+
+            for name in combined:
+                wanted_hint_cost += crystal_types[name]
 
             wanted_hint_cost = min(wanted_hint_cost, 100)
-            range: int = self.ctx.slot_data["max_hint_cost"] - self.ctx.slot_data["min_hint_cost"]
-            wanted_hint_cost *= range // 100
+            _range: int = self.ctx.slot_data["max_hint_cost"] - self.ctx.slot_data["min_hint_cost"]
+            wanted_hint_cost *= _range // 100
             wanted_hint_cost += self.ctx.slot_data["min_hint_cost"]
             wanted_hint_cost = min(wanted_hint_cost, self.ctx.slot_data["max_hint_cost"])
             if hint_cost != wanted_hint_cost:
