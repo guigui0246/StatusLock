@@ -1,11 +1,10 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-import platform
-import subprocess
 import pickle
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
+from kivy.core.clipboard import Clipboard
 
 from CommonClient import ClientCommandProcessor
 from .strings import (
@@ -18,37 +17,13 @@ if TYPE_CHECKING:
     from .context import SLContext
 
 
-def copy_to_clipboard(text: str) -> None:
-    system = platform.system()
-
-    if system == "Windows":
-        # Windows
-        cmd = f'echo {text.strip()}| clip'
-        os.system(cmd)
-
-    elif system == "Darwin":
-        # macOS
-        process = subprocess.Popen(
-            'pbcopy', env={'LANG': 'en_US.UTF-8'}, stdin=subprocess.PIPE)
-        process.communicate(text.encode('utf-8'))
-
-    elif system == "Linux":
-        # Linux (requires xclip or xsel installed)
-        try:
-            process = subprocess.Popen(
-                ['xclip', '-selection', 'clipboard'], stdin=subprocess.PIPE)
-            process.communicate(text.encode('utf-8'))
-        except FileNotFoundError:
-            try:
-                process = subprocess.Popen(
-                    ['xsel', '--clipboard', '--input'], stdin=subprocess.PIPE)
-                process.communicate(text.encode('utf-8'))
-            except FileNotFoundError:
-                raise Exception(
-                    "Install xclip or xsel to use clipboard functionality on Linux")
-
-    else:
-        raise Exception(f"Unsupported OS: {system}")
+def copy_to_clipboard(text: str, prt_funct: Callable[[str], None] = print) -> None:
+    if not text:
+        return
+    try:
+        Clipboard.copy(text)
+    except Exception as e:
+        prt_funct(f"Failed to copy to clipboard: {repr(e)}")
 
 
 class SLClientCommandProcessor(ClientCommandProcessor):
@@ -174,14 +149,22 @@ class SLClientCommandProcessor(ClientCommandProcessor):
             for name in combined:
                 wanted_hint_cost += crystal_types[name]
 
-            wanted_hint_cost = 100 - max(wanted_hint_cost, 100)
+            wanted_hint_cost = 100 - min(wanted_hint_cost, 100)
             _range: int = self.ctx.slot_data["max_hint_cost"] - self.ctx.slot_data["min_hint_cost"]
             wanted_hint_cost *= _range
-            wanted_hint_cost += self.ctx.slot_data["min_hint_cost"]
             wanted_hint_cost //= 100
+            wanted_hint_cost += self.ctx.slot_data["min_hint_cost"]
             wanted_hint_cost = min(wanted_hint_cost, self.ctx.slot_data["max_hint_cost"])
             if hint_cost != wanted_hint_cost:
                 l.append(prefix + HINT_COST.format(cost=wanted_hint_cost))
+                # Bug until 0.6.7 included: self.ctx.hint_cost doesn't get updated when hint cost changes
+                # TODO: change manifest to prevent use on 0.6.7 and below
+                # For now we put a warning line
+                self.output(
+                    "Warning: Due to a bug in the core (#6149), "
+                    "the client side hint cost won't update after you send the command.\n"
+                    "To update it disconnect and reconnect to the server or update to core to version 0.6.8+ or 0.7.0+"
+                )
                 changed = True
 
         items = [self.ctx.item_names.lookup_in_game(i.item) for i in self.ctx.items_received]
@@ -237,7 +220,10 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Copy the lines you'd need to paste into the clipboard"""
 
         s = "\n".join(self.get_status_lock_lines())
-        copy_to_clipboard(s)
+        if s:
+            copy_to_clipboard(s + "\n", self.output)
+        else:
+            self.output("No lines to copy")
         pass
 
 

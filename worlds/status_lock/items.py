@@ -82,10 +82,6 @@ ALL_FILLERS = [
 ]
 
 
-# TODO: make macguffin only present if macguffin goal is enabled
-# replace "world.options.macguffin_amount > 0" by a rule
-
-
 class SLItem(Item):
     game = "Status Lock"
 
@@ -99,7 +95,7 @@ def get_filler_item_name(world: SLWorld) -> str:
 def create_item(world: SLWorld, name: str) -> SLItem:
     classification = DEFAULT_ITEM_CLASSIFICATIONS[name]
 
-    if name == MACGUFFIN_ITEM_NAME and world.options.macguffin_amount > 0:
+    if name == MACGUFFIN_ITEM_NAME and has_macguffins(world):
         classification = ItemClassification.progression_deprioritized_skip_balancing
 
     return SLItem(name, classification, ITEM_NAME_TO_ID[name], world.player)
@@ -192,7 +188,9 @@ def fill_slot_data(world: SLWorld) -> OnlineData:
     return slot_data
 
 
-def create_all_items(world: SLWorld) -> None:
+def create_item_pool(world: SLWorld) -> list[Item]:
+    if hasattr(world, "_sl_itempool"):
+        return world._sl_itempool  # type: ignore
     itempool: list[Item] = []
 
     if has_release_shards(world):
@@ -235,4 +233,9 @@ def create_all_items(world: SLWorld) -> None:
     number_of_unfilled_locations = len(world.multiworld.get_unfilled_locations(world.player))
     needed_number_of_filler_items = number_of_unfilled_locations - number_of_items
     itempool += [world.create_filler() for _ in range(needed_number_of_filler_items)]
-    world.multiworld.itempool += itempool
+    world._sl_itempool = itempool  # type: ignore
+    return itempool
+
+
+def create_all_items(world: SLWorld) -> None:
+    world.multiworld.itempool += create_item_pool(world)

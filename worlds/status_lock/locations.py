@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from BaseClasses import Location
-import Options
+from BaseClasses import Location, LocationProgressType
 
 from . import items
 
@@ -22,6 +21,7 @@ LOCATION_NAME_TO_ID = {
 
 class SLLocation(Location):
     game = "SL"
+    progress_type = LocationProgressType.EXCLUDED
 
 
 def create_all_locations(world: SLWorld) -> None:
@@ -32,16 +32,12 @@ def create_all_locations(world: SLWorld) -> None:
 def create_regular_locations(world: SLWorld) -> None:
     region = world.get_region("Admin Panel")
 
-    locations = LOCATION_NAME_TO_ID.copy()
-    # TODO: limit the number of locations created based on options
-    # We don't want to create all 3000 locations if the player only has 50 items
+    locations = {k: v for k, v in LOCATION_NAME_TO_ID.items() if v <= len(items.create_item_pool(world))}
 
     region.add_locations(
-        locations
+        locations,
+        location_type=SLLocation,
     )
-    set_pointer = (world.multiworld.exclude_locations[world.player]
-                   if hasattr(world.multiworld, 'exclude_locations') else Options.ExcludeLocations({}))
-    set_pointer.value.update(*locations.keys())
 
 
 def create_events(world: SLWorld) -> None:
