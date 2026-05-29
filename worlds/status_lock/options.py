@@ -51,7 +51,7 @@ class GoalChoice(Choice):
     option_everyprogression = option_all_shards | GoalType.giant_crystal
     alias_evertprog = option_everyprogression
 
-    option_filler_completion = GoalType.filler_completion
+    # option_filler_completion = GoalType.filler_completion
     option_macguffin_collection = GoalType.macguffin_collection
     option_everything = (
         option_everyprogression |

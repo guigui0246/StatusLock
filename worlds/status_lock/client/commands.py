@@ -5,6 +5,7 @@ import pickle
 import sys
 from typing import TYPE_CHECKING, Callable
 from kivy.core.clipboard import Clipboard
+import asyncio
 
 from CommonClient import ClientCommandProcessor
 from .strings import (
@@ -103,6 +104,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Get the lines you'd need to paste into the server"""
         if self.ctx.slot_data is None:
             raise RuntimeError("No slot data available, please connect to a server first")
+        self.ctx.item_update_task = asyncio.create_task(self.ctx.item_update())
         l: list[str] = []
         changed = False
         if client:
