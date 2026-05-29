@@ -203,6 +203,9 @@ class SLContext(CommonContext):
         if goal_fullfilled:
             await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
             self.finished_game = True
+
+        # todo: admin changes
+
         self.item_update_task_lock.release()
 
 
