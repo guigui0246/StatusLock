@@ -188,9 +188,27 @@ def fill_slot_data(world: SLWorld) -> OnlineData:
     return slot_data
 
 
+_gen_flag: str = ""
+
+
 def create_item_pool(world: SLWorld) -> list[Item]:
+    global _gen_flag
     if hasattr(world, "_sl_itempool"):
         return world._sl_itempool  # type: ignore
+    if _gen_flag:
+        err = PermissionError("Creating multiple Status Lock players at the same time is not allowed.")
+        err.errno = 2
+        err.strerror = "You cannot generate multiple Status Lock players at the same time."
+        err.filename = _gen_flag
+        err.filename2 = world.player_name
+        raise err
+    from tkinter import messagebox
+    if not messagebox.askyesno(
+        "This world is trying to generate a Status Lock player.",
+        "Do you know what it means and still accept to generate?"
+    ):
+        raise KeyboardInterrupt()
+
     itempool: list[Item] = []
 
     if has_release_shards(world):
@@ -233,7 +251,10 @@ def create_item_pool(world: SLWorld) -> list[Item]:
     number_of_unfilled_locations = len(world.multiworld.get_unfilled_locations(world.player))
     needed_number_of_filler_items = number_of_unfilled_locations - number_of_items
     itempool += [world.create_filler() for _ in range(needed_number_of_filler_items)]
+
+    _gen_flag = world.player_name
     world._sl_itempool = itempool  # type: ignore
+
     return itempool
 
 

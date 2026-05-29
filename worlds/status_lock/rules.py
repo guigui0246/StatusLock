@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from BaseClasses import CollectionState
 from worlds.generic.Rules import set_rule
-from .items import ITEM_NAME_TO_ID
+from .items import ITEM_NAME_TO_ID, create_item_pool
 from .locations import LOCATION_NAME_PREFIX
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ def create_count_items_function(number: int, world: SLWorld):
 
 
 def set_all_location_rules(world: SLWorld) -> None:
-    amount_locations = 0  # TODO: set
+    amount_locations = len(create_item_pool(world))
     for i in range(1, amount_locations):
         location = world.get_location(LOCATION_NAME_PREFIX + str(i))
         set_rule(location, create_count_items_function(i, world))
