@@ -33,6 +33,7 @@ class SLContext(CommonContext):
         self.item_update_task_lock2: asyncio.Lock = asyncio.Lock()
         self.send_index: int = 0
         self.all_data = DataClass()
+        self.command_processor_instance: SLClientCommandProcessor | None = None
 
         SL_FOLDER = ".StatusLockArchipelago"
 
@@ -130,83 +131,85 @@ class SLContext(CommonContext):
         self.running_item_update_task = asyncio.current_task()  # Prevents losing the task and getting a lock
         self.item_update_task_lock2.release()
 
-        items = [self.item_names.lookup_in_game(i.item) for i in self.items_received]
-        max_id = len(items)
-        await self.check_locations(list(v for v in LOCATION_NAME_TO_ID.values() if v <= max_id))
+        try:
+            items = [self.item_names.lookup_in_game(i.item) for i in self.items_received]
+            max_id = len(items)
+            await self.check_locations(list(v for v in LOCATION_NAME_TO_ID.values() if v <= max_id))
 
-        goal = self.slot_data.get("goal_choice", 0)
-        goal_conditions = {
-            "release_shards": goal & GoalType.release_shards,
-            "auto_release_shards": goal & GoalType.auto_release_shards,
-            "collect_shards": goal & GoalType.collect_shards,
-            "auto_collect_shards": goal & GoalType.auto_collect_shards,
-            "giant_crystal": goal & GoalType.giant_crystal,
-            "filler_completion": goal & GoalType.filler_completion,
-            "macguffin_collection": goal & GoalType.macguffin_collection,
-        }
-        goal_fullfilled_conditions = {
-            "release_shards": True,
-            "auto_release_shards": True,
-            "collect_shards": True,
-            "auto_collect_shards": True,
-            "giant_crystal": True,
-            "filler_completion": True,
-            "macguffin_collection": True,
-        }
-        if self.slot_data.get("has_release_shards", False):
-            goal_fullfilled_conditions["release_shards"] = (
-                self.slot_data.get("release_shards_needed_amount", 0) <= items.count("Release Shard")
-            )
-        if self.slot_data.get("has_auto_release_shards", False):
-            goal_fullfilled_conditions["auto_release_shards"] = (
-                self.slot_data.get("auto_release_shards_needed_amount", 0) <= items.count("Auto-Release Shard")
-            )
-        if self.slot_data.get("has_collect_shards", False):
-            goal_fullfilled_conditions["collect_shards"] = (
-                self.slot_data.get("collect_shards_needed_amount", 0) <= items.count("Collect Shard")
-            )
-        if self.slot_data.get("has_auto_collect_shards", False):
-            goal_fullfilled_conditions["auto_collect_shards"] = (
-                self.slot_data.get("auto_collect_shards_needed_amount", 0) <= items.count("Auto-Collect Shard")
-            )
-        if self.slot_data.get("has_macguffins", False):
-            goal_fullfilled_conditions["macguffin_collection"] = (
-                self.slot_data.get("macguffins_needed_amount", 0) <= items.count(MACGUFFIN_ITEM_NAME)
-            )
+            goal = self.slot_data.get("goal_choice", 0)
+            goal_conditions = {
+                "release_shards": goal & GoalType.release_shards,
+                "auto_release_shards": goal & GoalType.auto_release_shards,
+                "collect_shards": goal & GoalType.collect_shards,
+                "auto_collect_shards": goal & GoalType.auto_collect_shards,
+                "giant_crystal": goal & GoalType.giant_crystal,
+                "filler_completion": goal & GoalType.filler_completion,
+                "macguffin_collection": goal & GoalType.macguffin_collection,
+            }
+            goal_fullfilled_conditions = {
+                "release_shards": True,
+                "auto_release_shards": True,
+                "collect_shards": True,
+                "auto_collect_shards": True,
+                "giant_crystal": True,
+                "filler_completion": True,
+                "macguffin_collection": True,
+            }
+            if self.slot_data.get("has_release_shards", False):
+                goal_fullfilled_conditions["release_shards"] = (
+                    self.slot_data.get("release_shards_needed_amount", 0) <= items.count("Release Shard")
+                )
+            if self.slot_data.get("has_auto_release_shards", False):
+                goal_fullfilled_conditions["auto_release_shards"] = (
+                    self.slot_data.get("auto_release_shards_needed_amount", 0) <= items.count("Auto-Release Shard")
+                )
+            if self.slot_data.get("has_collect_shards", False):
+                goal_fullfilled_conditions["collect_shards"] = (
+                    self.slot_data.get("collect_shards_needed_amount", 0) <= items.count("Collect Shard")
+                )
+            if self.slot_data.get("has_auto_collect_shards", False):
+                goal_fullfilled_conditions["auto_collect_shards"] = (
+                    self.slot_data.get("auto_collect_shards_needed_amount", 0) <= items.count("Auto-Collect Shard")
+                )
+            if self.slot_data.get("has_macguffins", False):
+                goal_fullfilled_conditions["macguffin_collection"] = (
+                    self.slot_data.get("macguffins_needed_amount", 0) <= items.count(MACGUFFIN_ITEM_NAME)
+                )
 
-        if self.slot_data.get("has_hint_crystals", False):
-            crystal_types_order: list[str] = [
-                "Mini Hint Crystal",
-                "Small Hint Crystal",
-                "Medium Hint Crystal",
-                "Big Hint Crystal",
-                "Giant Hint Crystal"
-            ]
-            combined = list(filter(lambda x: x in crystal_types_order, items))
+            if self.slot_data.get("has_hint_crystals", False):
+                crystal_types_order: list[str] = [
+                    "Mini Hint Crystal",
+                    "Small Hint Crystal",
+                    "Medium Hint Crystal",
+                    "Big Hint Crystal",
+                    "Giant Hint Crystal"
+                ]
+                combined = list(filter(lambda x: x in crystal_types_order, items))
 
-            for i, name in enumerate(crystal_types_order):
-                if i >= len(crystal_types_order) - 1:
-                    break
-                if name not in combined:
-                    continue
-                amount = len(list(filter(lambda x: x == name, combined)))
-                if amount < 3:
-                    continue
-                combine, left = divmod(amount, 3)
-                for _ in range(amount):
-                    combined.remove(name)
-                combined += [name] * left
-                combined += [crystal_types_order[i + 1]] * combine
-            goal_fullfilled_conditions["giant_crystal"] = crystal_types_order[-1] in combined
+                for i, name in enumerate(crystal_types_order):
+                    if i >= len(crystal_types_order) - 1:
+                        break
+                    if name not in combined:
+                        continue
+                    amount = len(list(filter(lambda x: x == name, combined)))
+                    if amount < 3:
+                        continue
+                    combine, left = divmod(amount, 3)
+                    for _ in range(amount):
+                        combined.remove(name)
+                    combined += [name] * left
+                    combined += [crystal_types_order[i + 1]] * combine
+                goal_fullfilled_conditions["giant_crystal"] = crystal_types_order[-1] in combined
 
-        goal_fullfilled = all(goal_fullfilled_conditions[cond] for cond in goal_conditions if goal_conditions[cond])
-        if goal_fullfilled:
-            await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
-            self.finished_game = True
+            goal_fullfilled = all(goal_fullfilled_conditions[cond] for cond in goal_conditions if goal_conditions[cond])
+            if goal_fullfilled:
+                await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+                self.finished_game = True
 
-        # todo: admin changes
+            # todo: admin changes
 
-        self.item_update_task_lock.release()
+        finally:
+            self.item_update_task_lock.release()
 
 
 __all__ = ["SLContext"]
