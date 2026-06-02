@@ -86,6 +86,13 @@ class SLContext(CommonContext):
             return []
 
     async def shutdown(self):
+        if self.item_update_task:
+            self.item_update_task.cancel()
+        if self.waiting_item_update_task:
+            self.waiting_item_update_task.cancel()
+        await self.item_update_task_lock.acquire()
+        if self.running_item_update_task:
+            self.running_item_update_task.cancel()
         await super().shutdown()
 
     def on_package(self, cmd: str, args: dict[str, Any]) -> None:
@@ -96,9 +103,13 @@ class SLContext(CommonContext):
                 self.slot_data = OnlineData(slot_data)
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
+            self.finished_game = False
             self.item_update_task = asyncio.create_task(self.item_update())
 
         if cmd in {"ReceivedItems"}:
+            self.item_update_task = asyncio.create_task(self.item_update())
+
+        if cmd in {"RoomUpdate"}:
             self.item_update_task = asyncio.create_task(self.item_update())
 
     def run_gui(self):
@@ -116,6 +127,13 @@ class SLContext(CommonContext):
 
             def show(self) -> None:
                 Window.show()  # type: ignore
+
+            def update_hints(_self):
+                """idk how to catch the disconnect event but this is called in disconnect"""
+                if self.disconnected_intentionally:
+                    self.finished_game = False
+                    self.reset_server_state()
+                super().update_hints()
 
         self.ui: SLManager = SLManager(self)  # type: ignore[reportIncompatibleVariableOverride]
         self.ui_task = asyncio.create_task(self.ui.async_run(), name="UI")
@@ -206,7 +224,21 @@ class SLContext(CommonContext):
                 await self.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
                 self.finished_game = True
 
-            # todo: admin changes
+            if self.command_processor_instance is not None:
+                lines = self.command_processor_instance.get_status_lock_lines(client=True)
+                if lines:
+                    if self.admin_password:
+                        # todo: admin changes
+                        self.command_processor_instance.send_notification(
+                            f"Status Lock {self.auth}",
+                            f"[Not yet implemented] Automatically running {len(lines)} new commands"
+                        )
+                        pass
+                    else:
+                        self.command_processor_instance.send_notification(
+                            f"Status Lock {self.auth}",
+                            f"You have {len(lines)} new commands to run"
+                        )
 
         finally:
             self.item_update_task_lock.release()

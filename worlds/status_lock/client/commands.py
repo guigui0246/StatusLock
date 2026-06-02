@@ -3,9 +3,8 @@ import os
 from pathlib import Path
 import pickle
 import sys
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, cast
 from kivy.core.clipboard import Clipboard
-import asyncio
 
 from CommonClient import ClientCommandProcessor
 from .strings import (
@@ -31,6 +30,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
     def __init__(self, ctx: SLContext):
         super().__init__(ctx)
         self.ctx = ctx
+        self.ctx.command_processor_instance = self
         self.config_folder = os.path.join(self.ctx.save_path, 'config')
         self.config_file = os.path.join(self.config_folder, 'config')
         self.icon = None
@@ -92,6 +92,47 @@ class SLClientCommandProcessor(ClientCommandProcessor):
             self.output(f"pystray is not available: {repr(e)}")
             return
 
+    def send_notification(self, title: str, message: str) -> None:
+        """Send a notification to the user, if possible"""
+
+        if sys.platform == "win32":
+            try:
+                import winotify  # pyright: ignore[reportMissingModuleSource]
+                del winotify
+            except ImportError:
+                sys.path.append(str(Path(__file__).parent.parent / "deps"))
+
+            try:
+                import winotify  # pyright: ignore[reportMissingModuleSource] # noqa: F811
+                self.notif = winotify.Notification(
+                    app_id="Status Lock",
+                    title=title,
+                    msg=message,
+                    icon="./data/icon.ico"
+                )
+                self.notif.show()
+            except (ImportError, OSError) as e:
+                self.output(f"winotify is not available: {repr(e)}")
+                return
+        else:
+            try:
+                import plyer  # pyright: ignore[reportMissingModuleSource]
+                del plyer
+            except ImportError:
+                sys.path.append(str(Path(__file__).parent.parent / "deps"))
+
+            try:
+                import plyer  # pyright: ignore[reportMissingModuleSource] # noqa: F811
+                cast(plyer.facades.Notification, plyer.notification).notify(
+                    title=title,
+                    message=message,
+                    app_name="Status Lock",
+                    app_icon="./data/icon.ico"
+                )
+            except (ImportError, OSError) as e:
+                self.output(f"plyer is not available: {repr(e)}")
+                return
+
     def untray(self) -> None:
         """Go back from a tray icon to the client"""
         if self.icon is not None:
@@ -104,7 +145,6 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Get the lines you'd need to paste into the server"""
         if self.ctx.slot_data is None:
             raise RuntimeError("No slot data available, please connect to a server first")
-        self.ctx.item_update_task = asyncio.create_task(self.ctx.item_update())
         l: list[str] = []
         changed = False
         if client:
@@ -162,11 +202,12 @@ class SLClientCommandProcessor(ClientCommandProcessor):
                 # Bug until 0.6.7 included: self.ctx.hint_cost doesn't get updated when hint cost changes
                 # TODO: change manifest to prevent use on 0.6.7 and below
                 # For now we put a warning line
-                self.output(
-                    "Warning: Due to a bug in the core (#6149), "
-                    "the client side hint cost won't update after you send the command.\n"
-                    "To update it disconnect and reconnect to the server or update to core to version 0.6.8+ or 0.7.0+"
-                )
+                if not client:
+                    self.output(
+                        "Warning: Due to a bug in the core (#6149), "
+                        "the client side hint cost won't update after you send the command.\n"
+                        "To update it disconnect and reconnect to the server or update to core to version 0.6.8+ or 0.7.0+"
+                    )
                 changed = True
 
         items = [self.ctx.item_names.lookup_in_game(i.item) for i in self.ctx.items_received]
