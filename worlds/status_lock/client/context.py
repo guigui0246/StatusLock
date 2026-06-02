@@ -55,7 +55,7 @@ class SLContext(CommonContext):
             with open(os.path.join(self.save_path, "key"), "rb") as f:
                 key = f.read()
 
-        Data.admin_encryption_key = key
+        Data().admin_encryption_key = key
 
     @property
     def admin_password(self) -> str | None:
@@ -97,7 +97,6 @@ class SLContext(CommonContext):
 
     def on_package(self, cmd: str, args: dict[str, Any]) -> None:
         if cmd in {"Connected"}:
-            print(args)
             slot_data = args.get('slot_data', None)
             if slot_data:
                 self.slot_data = OnlineData(slot_data)
@@ -231,9 +230,19 @@ class SLContext(CommonContext):
                         # todo: admin changes
                         self.command_processor_instance.send_notification(
                             f"Status Lock {self.auth}",
-                            f"[Not yet implemented] Automatically running {len(lines)} new commands"
+                            f"Automatically running {len(lines)} new commands"
                         )
-                        pass
+                        for line in lines:
+                            self.command_processor_instance(line)
+
+                            # Bug until 0.6.7 included: self.hint_cost doesn't get updated when hint cost changes
+                            # TODO: change manifest to prevent use on 0.6.7 and below
+                            # For now we assume it got changed and nothing else touched it
+                            if "hint_cost" in line:
+                                try:
+                                    self.hint_cost = int(line.split("hint_cost ")[-1])
+                                except Exception:
+                                    pass
                     else:
                         self.command_processor_instance.send_notification(
                             f"Status Lock {self.auth}",

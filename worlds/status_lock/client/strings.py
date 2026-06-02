@@ -5,6 +5,7 @@ from typing import Literal
 CLIENT_PREFIX = "!admin "
 WEBSITE_PREFIX = ""
 CONNECT_ADMIN = "login {password}"
+DISCONNECT_ADMIN = "logout"
 HINT_COST = "/option hint_cost {cost}"
 RELEASE = "/option release_mode {mode}"
 COLLECT = "/option collect_mode {mode}"

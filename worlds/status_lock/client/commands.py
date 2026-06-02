@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import os
 from pathlib import Path
 import pickle
@@ -8,7 +9,7 @@ from kivy.core.clipboard import Clipboard
 
 from CommonClient import ClientCommandProcessor
 from .strings import (
-    CLIENT_PREFIX, CONNECT_ADMIN,
+    CLIENT_PREFIX, CONNECT_ADMIN, DISCONNECT_ADMIN,
     HINT_COST, RELEASE, COLLECT,
     WEBSITE_PREFIX, ModeType
 )
@@ -43,6 +44,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         """Sets the admin password"""
         self.ctx.admin_password = key
         self.output("Correctly set password")
+        self.ctx.item_update_task = asyncio.create_task(self.ctx.item_update())
 
     def _cmd_save(self) -> None:
         """Saves the current information (like passwords) to a file"""
@@ -58,6 +60,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         with open(self.config_file, 'rb') as f:
             self.ctx.all_data = pickle.load(f)
         self.output("Loaded previous passwords and settings")
+        self.ctx.item_update_task = asyncio.create_task(self.ctx.item_update())
 
     def _cmd_tray(self) -> None:
         """Sends the client to a tray icon"""
@@ -149,7 +152,11 @@ class SLClientCommandProcessor(ClientCommandProcessor):
         changed = False
         if client:
             prefix = CLIENT_PREFIX
-            l.append(prefix + CONNECT_ADMIN.format(password=self.ctx.admin_password))
+            try:
+                l.append(prefix + CONNECT_ADMIN.format(password=self.ctx.admin_password))
+            except Exception:
+                prefix = WEBSITE_PREFIX
+                client = False
         else:
             prefix = WEBSITE_PREFIX
         has_hint_crystals = self.ctx.slot_data["has_hint_crystals"]
@@ -206,7 +213,7 @@ class SLClientCommandProcessor(ClientCommandProcessor):
                     self.output(
                         "Warning: Due to a bug in the core (#6149), "
                         "the client side hint cost won't update after you send the command.\n"
-                        "To update it disconnect and reconnect to the server or update to core to version 0.6.8+ or 0.7.0+"
+                        "To update it, disconnect and reconnect to the server or update to core to version 0.6.8+ or 0.7.0+"
                     )
                 changed = True
 
@@ -257,6 +264,10 @@ class SLClientCommandProcessor(ClientCommandProcessor):
 
         if not changed:
             return []
+
+        if client:
+            l.append(prefix + DISCONNECT_ADMIN)
+
         return l
 
     def _cmd_copy_lines(self) -> None:

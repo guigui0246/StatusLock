@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from typing import Any
 from .cryptography.fernet import Fernet
 
 
@@ -66,6 +67,39 @@ class Data:
         if self.__admin_password is not None:
             sl.append(f"Admin password: \"{self.admin_password}\"")
         return "(" + ";".join(sl) + ")"
+
+    def __getstate__(self):
+        if self.__security != Data.__SecurityLevel.Gettable:
+            raise PermissionError("You are on a read-only instance")
+        state = self.__dict__.copy()
+        state.pop("__security", None)
+        state.pop("__admin_encryption_key", None)
+        state.pop("Data__security", None)
+        state.pop("Data__admin_encryption_key", None)
+        state.pop("_Data__security", None)
+        state.pop("_Data__admin_encryption_key", None)
+        return state
+
+    def __setstate__(self, state: Any):
+        refuse = False
+        if not any(
+            k in ["_Data__admin_password"] for k in state.keys()
+        ):
+            refuse = True
+        if (
+            getattr(
+                self, '__security',
+                # If we don't have __security yet then it's pickle and we should allow it
+                # but if __admin_password is not in the state then it's someone trying to fake pickle
+                # in the hope of getting the admin password, so we should refuse it
+                None if refuse else Data.__SecurityLevel.Gettable
+            ) != Data.__SecurityLevel.Gettable
+        ):
+            raise PermissionError("You are on a read-only instance")
+        if refuse:
+            raise ValueError("admin_password must be set in the state")
+        self.__dict__.update(state)
+        self.__security = Data.__SecurityLevel.Gettable
 
 
 del SecurityLevel  # SecurityLevel should be kept in this file alone
