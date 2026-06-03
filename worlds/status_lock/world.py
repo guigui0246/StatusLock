@@ -1,7 +1,18 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, ClassVar
 from worlds.AutoWorld import World
 from . import items, locations, options, regions, rules, web_world
+from settings import Group, Bool
+
+
+class SLSettings(Group):
+    class IgnoreGenerationConfirmation(Bool):
+        """Whether to skip the confirmation dialog when generating a Status Lock world."""
+        display_name = "Ignore Generation Confirmation"
+        description = "Skip the confirmation dialog when generating a Status Lock world"
+        default = False
+
+    ignore_generation_confirmation: IgnoreGenerationConfirmation | bool = IgnoreGenerationConfirmation.default
 
 
 class SLWorld(World):
@@ -9,6 +20,9 @@ class SLWorld(World):
     Status Lock is a meta-game where you need to collect varius crystals to unlock statuses
     """
     game = "Status Lock"
+
+    settings: SLSettings  # type: ignore
+    settings_key: ClassVar[str] = "status_lock_settings"  # type: ignore
 
     web = web_world.SLWebWorld()
 
@@ -20,7 +34,7 @@ class SLWorld(World):
 
     origin_region_name = "Admin Panel"
 
-    required_client_version = (0, 1, 0)
+    required_client_version = (0, 2, 0)
 
     def create_regions(self) -> None:
         regions.create_and_connect_regions(self)

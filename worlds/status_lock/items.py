@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, TypedDict, cast
+import logging
 
 from BaseClasses import Item, ItemClassification
+from settings import get_settings
 from worlds.status_lock.options import GoalType
 
 if TYPE_CHECKING:
@@ -202,12 +204,19 @@ def create_item_pool(world: SLWorld) -> list[Item]:
         err.filename = _gen_flag
         err.filename2 = world.player_name
         raise err
-    from tkinter import messagebox
-    if not messagebox.askyesno(
-        "This world is trying to generate a Status Lock player.",
-        "Do you know what it means and still accept to generate?"
-    ):
-        raise KeyboardInterrupt()
+    try:
+        from tkinter import messagebox
+        if not (
+            getattr(get_settings().status_lock_settings, 'ignore_generation_confirmation', False)
+        ) and not messagebox.askyesno(
+            "This world is trying to generate a Status Lock player.",
+            "Do you know what it means and still accept to generate?"
+        ):
+            raise KeyboardInterrupt()
+    except Exception:
+        logging.warning(
+            "tkinter is not available, skipping confirmation dialog for Status Lock generation."
+        )
 
     itempool: list[Item] = []
 

@@ -19,8 +19,8 @@ class SLWebWorld(WebWorld):
     )
     setup_fr = Tutorial(
         "Multiworld Setup Guide",
-        "A guide to setting up Status Lock for MultiWorld.",
-        "French",
+        "Un guide pour setup Status Lock pour MultiWorld.",
+        "Français",
         "setup_fr.md",
         "setup/fr",
         ["Guigui0246"],

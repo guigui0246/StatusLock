@@ -227,7 +227,6 @@ class SLContext(CommonContext):
                 lines = self.command_processor_instance.get_status_lock_lines(client=True)
                 if lines:
                     if self.admin_password:
-                        # todo: admin changes
                         self.command_processor_instance.send_notification(
                             f"Status Lock {self.auth}",
                             f"Automatically running {len(lines)} new commands"
