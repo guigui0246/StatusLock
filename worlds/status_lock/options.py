@@ -107,11 +107,12 @@ class AutoReleaseShardsAmount(Range):
     How much auto-release shards to place in the pool.
     Those will only have an effect if the number of required release shards is reached.
     If set to 0, auto-release will be unlocked as soon as the required release shards are available.
+    If set to -1, auto-release will never be unlocked.
     """
 
     display_name = "Auto-Release Shards Amount"
 
-    range_start = 0
+    range_start = -1
     range_end = 10
     default = 1
 
@@ -159,11 +160,12 @@ class AutoCollectShardsAmount(Range):
     How much auto-collect shards to place in the pool.
     Those will only have an effect if the number of required collect shards is reached.
     If set to 0, auto-collect will be unlocked as soon as the required collect shards are available.
+    If set to -1, auto-collect will never be unlocked.
     """
 
     display_name = "Auto-Collect Shards Amount"
 
-    range_start = 0
+    range_start = -1
     range_end = 10
     default = 1
 

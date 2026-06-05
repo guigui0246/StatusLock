@@ -108,7 +108,7 @@ def has_release_shards(world: SLWorld) -> bool:
 
 
 def has_auto_release_shards(world: SLWorld) -> bool:
-    return world.options.auto_release_shards_amount > 0
+    return world.options.auto_release_shards_amount >= 0
 
 
 def has_collect_shards(world: SLWorld) -> bool:
@@ -116,7 +116,7 @@ def has_collect_shards(world: SLWorld) -> bool:
 
 
 def has_auto_collect_shards(world: SLWorld) -> bool:
-    return world.options.auto_collect_shards_amount > 0
+    return world.options.auto_collect_shards_amount >= 0
 
 
 def has_macguffins(world: SLWorld) -> bool:
