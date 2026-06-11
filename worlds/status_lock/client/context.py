@@ -1,5 +1,7 @@
 from __future__ import annotations
+import re
 
+from worlds.status_lock.client.strings import CLIENT_PREFIX, COLLECT_PLAYER, CONNECT_ADMIN, DISCONNECT_ADMIN, RELEASE_PLAYER
 from worlds.status_lock.items import OnlineData, MACGUFFIN_ITEM_NAME
 from worlds.status_lock.locations import LOCATION_NAME_TO_ID
 from worlds.status_lock.options import GoalType
@@ -15,6 +17,9 @@ from NetUtils import ClientStatus, Endpoint
 from CommonClient import CommonContext
 from .classs import Data, DataClass
 from .commands import SLClientCommandProcessor
+
+
+FINISHED_RE = re.compile(r"^(.*?) has \d+ connections? and has finished\. \(.*\)", re.MULTILINE)
 
 
 class SLContext(CommonContext):
@@ -33,7 +38,14 @@ class SLContext(CommonContext):
         self.item_update_task_lock2: asyncio.Lock = asyncio.Lock()
         self.send_index: int = 0
         self.all_data = DataClass()
+        self.goaled_players: set[str] = set()
         self.command_processor_instance: SLClientCommandProcessor | None = None
+        self.release_lock: asyncio.Lock = asyncio.Lock()
+        self.collect_lock: asyncio.Lock = asyncio.Lock()
+        self.release_task: asyncio.Task[None] | None = None
+        self.collect_task: asyncio.Task[None] | None = None
+        self.running_release_task: asyncio.Task[None] | None = None
+        self.running_collect_task: asyncio.Task[None] | None = None
 
         SL_FOLDER = ".StatusLockArchipelago"
 
@@ -103,12 +115,25 @@ class SLContext(CommonContext):
             if not os.path.exists(self.save_path):
                 os.makedirs(self.save_path)
             self.finished_game = False
+            assert self.command_processor_instance
+            self.command_processor_instance("!status")
             self.item_update_task = asyncio.create_task(self.item_update())
 
         if cmd in {"ReceivedItems"}:
             self.item_update_task = asyncio.create_task(self.item_update())
 
         if cmd in {"RoomUpdate"}:
+            self.item_update_task = asyncio.create_task(self.item_update())
+
+        if cmd in {"PrintJSON"}:
+            for block in args.get("data", []):
+                text = block.get("text", "")
+                for match in FINISHED_RE.finditer(text):
+                    player = match.group(1).strip()
+                    self.goaled_players.add(player)
+            if args.get("type") == "Goal":
+                assert self.command_processor_instance
+                self.command_processor_instance("!status")
             self.item_update_task = asyncio.create_task(self.item_update())
 
     def run_gui(self):
@@ -250,6 +275,40 @@ class SLContext(CommonContext):
 
         finally:
             self.item_update_task_lock.release()
+
+    def release_in(self, seconds: int):
+        async def release():
+            assert self.command_processor_instance is not None
+            if self.release_lock.locked():
+                return
+            self.running_release_task = asyncio.current_task()
+            await self.release_lock.acquire()
+            users = list(self.goaled_players)
+            await asyncio.sleep(seconds)
+            self.command_processor_instance(CLIENT_PREFIX + CONNECT_ADMIN.format(
+                password=self.admin_password
+            ))
+            for player in users:
+                self.command_processor_instance(CLIENT_PREFIX + RELEASE_PLAYER.format(player_name=player))
+            self.command_processor_instance(CLIENT_PREFIX + DISCONNECT_ADMIN)
+        self.release_task = asyncio.create_task(release())
+
+    def collect_in(self, seconds: int):
+        async def collect():
+            assert self.command_processor_instance is not None
+            if self.collect_lock.locked():
+                return
+            self.running_collect_task = asyncio.current_task()
+            await self.collect_lock.acquire()
+            users = list(self.goaled_players)
+            await asyncio.sleep(seconds)
+            self.command_processor_instance(CLIENT_PREFIX + CONNECT_ADMIN.format(
+                password=self.admin_password
+            ))
+            for player in users:
+                self.command_processor_instance(CLIENT_PREFIX + COLLECT_PLAYER.format(player_name=player))
+            self.command_processor_instance(CLIENT_PREFIX + DISCONNECT_ADMIN)
+        self.collect_task = asyncio.create_task(collect())
 
 
 __all__ = ["SLContext"]

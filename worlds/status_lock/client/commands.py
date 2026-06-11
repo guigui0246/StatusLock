@@ -9,8 +9,8 @@ from kivy.core.clipboard import Clipboard
 
 from CommonClient import ClientCommandProcessor
 from .strings import (
-    CLIENT_PREFIX, CONNECT_ADMIN, DISCONNECT_ADMIN,
-    HINT_COST, RELEASE, COLLECT,
+    CLIENT_PREFIX, COLLECT_PLAYER, CONNECT_ADMIN, COUNTDOWN, DISCONNECT_ADMIN,
+    HINT_COST, RELEASE, COLLECT, RELEASE_PLAYER,
     WEBSITE_PREFIX, ModeType
 )
 
@@ -238,6 +238,15 @@ class SLClientCommandProcessor(ClientCommandProcessor):
 
         if wanted_release_mode is not None and self.ctx.permissions["release"] != wanted_release_mode:
             l.append(prefix + RELEASE.format(mode=wanted_release_mode))
+            if wanted_release_mode == ModeType.auto:
+                if self.ctx.goaled_players:
+                    if client:
+                        l.append("RELEASE in 10 seconds for: " + ", ".join(self.ctx.goaled_players))
+                        l.append(prefix + COUNTDOWN.format(seconds=10))
+                        # TODO: find why 10 seconds arrives between the 6 and the 5 of the server
+                        self.ctx.release_in(20)
+                    else:
+                        l.extend(prefix + RELEASE_PLAYER.format(player_name=p) for p in self.ctx.goaled_players)
             changed = True
 
         wanted_collect_mode: ModeType | None = None
@@ -260,6 +269,15 @@ class SLClientCommandProcessor(ClientCommandProcessor):
 
         if wanted_collect_mode is not None and self.ctx.permissions["collect"] != wanted_collect_mode:
             l.append(prefix + COLLECT.format(mode=wanted_collect_mode))
+            if wanted_collect_mode == ModeType.auto:
+                if self.ctx.goaled_players:
+                    if client:
+                        l.append("COLLECT in 10 seconds for: " + ", ".join(self.ctx.goaled_players))
+                        l.append(prefix + COUNTDOWN.format(seconds=10))
+                        # TODO: find why 10 seconds arrives between the 6 and the 5 of the server
+                        self.ctx.collect_in(20)
+                    else:
+                        l.extend(prefix + COLLECT_PLAYER.format(player_name=p) for p in self.ctx.goaled_players)
             changed = True
 
         if not changed:
