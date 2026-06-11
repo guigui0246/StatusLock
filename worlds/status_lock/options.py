@@ -113,7 +113,7 @@ class AutoReleaseShardsAmount(Range):
     display_name = "Auto-Release Shards Amount"
 
     range_start = -1
-    range_end = 10
+    range_end = 100
     default = 1
 
 
@@ -166,7 +166,7 @@ class AutoCollectShardsAmount(Range):
     display_name = "Auto-Collect Shards Amount"
 
     range_start = -1
-    range_end = 10
+    range_end = 100
     default = 1
 
 

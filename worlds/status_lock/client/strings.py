@@ -19,6 +19,6 @@ HINT_LOCATION = "/hint_location {player_name} {location_name}"  # To request a h
 
 
 class ModeType(StrEnum):
-    enabled = "enabled"
+    enabled = "goal"
     disabled = "disabled"
     auto = "auto"
